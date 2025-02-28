@@ -2,7 +2,6 @@ import SwiftUI
 
 struct TaskListView: View {
   @ObservedObject var viewModel: TaskViewModel
-  @State private var newTaskTitle = ""
   @State private var isAddingTask = false
   @State private var editMode: EditMode = .inactive
 
@@ -11,11 +10,26 @@ struct TaskListView: View {
       VStack {
         List {
           ForEach(viewModel.tasks) { task in
-            TaskRowView(
-              task: task,
-              onToggle: {
-                viewModel.toggleTaskCompletion(task: task)
-              })
+            HStack {
+              TaskRowView(task: task, viewModel: viewModel)
+                .frame(maxWidth: .infinity)
+                .layoutPriority(9)
+
+              ZStack {
+                // 不可见导航链接
+                NavigationLink(destination: TaskDetailView(task: task, viewModel: viewModel)) {
+                  EmptyView()
+                }
+                .opacity(0)
+
+                // 可见图标
+                Image(systemName: "exclamationmark.circle")
+                  .foregroundColor(.blue)
+                  .font(.system(size: 14))
+              }
+              .frame(maxWidth: .infinity)
+              .layoutPriority(1)
+            }.buttonStyle(BorderlessButtonStyle())
           }
           .onDelete { indexSet in
             viewModel.deleteTask(at: indexSet)
@@ -25,6 +39,8 @@ struct TaskListView: View {
         // 添加任务按钮
         Button(action: {
           isAddingTask = true
+          let newTask = viewModel.createTask()
+          viewModel.currentTask = newTask
         }) {
           HStack {
             Image(systemName: "plus.circle.fill")
@@ -35,6 +51,7 @@ struct TaskListView: View {
           .background(Color.blue)
           .cornerRadius(10)
         }
+        .padding(.bottom)
 
       }
       .navigationTitle("我的任务")
@@ -49,12 +66,18 @@ struct TaskListView: View {
       }
       .environment(\.editMode, $editMode)
       .sheet(isPresented: $isAddingTask) {
-        AddTaskView { title in
-          if !title.isEmpty {
-            viewModel.addTask(title: title)
+        if let task = viewModel.currentTask {
+          NavigationView {
+            TaskEditView(task: task, viewModel: viewModel, isNew: true)
           }
-          isAddingTask = false
         }
+      }
+      .onDisappear {
+        // 确保视图消失时清理可能存在的未保存变更
+        viewModel.discardChanges()
+      }
+      .onAppear {
+        viewModel.fetchTasks()
       }
     }
     .enableInjection()
@@ -67,64 +90,60 @@ struct TaskListView: View {
 
 // 任务行视图组件
 struct TaskRowView: View {
-  let task: TodoTask
-  let onToggle: () -> Void
+  @ObservedObject var task: Task
+  @ObservedObject var viewModel: TaskViewModel
 
   var body: some View {
     HStack {
-      Button(action: onToggle) {
+      Button(action: {
+        viewModel.toggleTaskCompletion(task)
+      }) {
         Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
           .foregroundColor(task.isCompleted ? .green : .gray)
       }
 
-      Text(task.title)
-        .strikethrough(task.isCompleted)
-        .foregroundColor(task.isCompleted ? .gray : .primary)
+      VStack(alignment: .leading, spacing: 4) {
+        Text(task.title)
+          .font(.headline)
+          .strikethrough(task.isCompleted)
+          .foregroundColor(task.isCompleted ? .gray : .primary)
+
+        HStack {
+          // 优先级
+          Image(systemName: task.priority.symbol)
+            .font(.footnote)
+            .foregroundColor(Color(task.priority.color))
+
+          // 截止日期
+          if let dueDate = task.dueDate {
+            Text(formattedDate(dueDate))
+              .font(.caption)
+              .foregroundColor(isOverdue(dueDate) && !task.isCompleted ? .red : .secondary)
+          }
+        }
+      }
 
       Spacer()
 
-      Text(task.createdAt, style: .date)
-        .font(.caption)
-        .foregroundColor(.gray)
+      if let creationDate = task.createdAt {
+        Text(creationDate, style: .date)
+          .font(.caption)
+          .foregroundColor(.gray)
+      }
     }
     .padding(.vertical, 4)
     .enableInjection()
   }
 
-  #if DEBUG
-    @ObserveInjection var forceRedraw
-  #endif
-}
+  private func formattedDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    formatter.timeStyle = .none
+    return formatter.string(from: date)
+  }
 
-// 添加任务视图
-struct AddTaskView: View {
-  @State private var newTaskTitle = ""
-  @Environment(\.presentationMode) var presentationMode
-  var onAdd: (String) -> Void
-
-  var body: some View {
-    NavigationView {
-      Form {
-        Section(header: Text("任务信息")) {
-          TextField("任务标题", text: $newTaskTitle)
-        }
-
-        Section {
-          Button("添加") {
-            onAdd(newTaskTitle)
-            presentationMode.wrappedValue.dismiss()
-          }
-          .frame(maxWidth: .infinity, alignment: .center)
-          .disabled(newTaskTitle.isEmpty)
-        }
-      }
-      .navigationTitle("添加新任务")
-      .navigationBarItems(
-        trailing: Button("取消") {
-          presentationMode.wrappedValue.dismiss()
-        })
-    }
-    .enableInjection()
+  private func isOverdue(_ date: Date) -> Bool {
+    return date < Date()
   }
 
   #if DEBUG
@@ -135,6 +154,8 @@ struct AddTaskView: View {
 // 预览
 struct TaskListView_Previews: PreviewProvider {
   static var previews: some View {
-    TaskListView(viewModel: TaskViewModel(initialTasks: TodoTask.sampleTasks))
+    let context = PersistenceController.shared.container.viewContext
+    let viewModel = TaskViewModel(context: context)
+    return TaskListView(viewModel: viewModel)
   }
 }

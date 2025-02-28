@@ -1,35 +1,77 @@
+import Combine
+import CoreData
 import Foundation
 import SwiftUI
 
 class TaskViewModel: ObservableObject {
-  @Published var tasks: [TodoTask] = []
+  private let viewContext: NSManagedObjectContext
 
-  init(initialTasks: [TodoTask] = []) {
-    self.tasks = initialTasks
+  @Published var tasks: [Task] = []
+  @Published var currentTask: Task?
+
+  init(context: NSManagedObjectContext = PersistenceController.shared.container.viewContext) {
+    self.viewContext = context
   }
 
-  // 添加新任务
-  func addTask(title: String) {
-    let newTask = TodoTask(title: title)
-    tasks.append(newTask)
-  }
+  // 获取任务列表
+  func fetchTasks() {
+    let request = Task.fetchRequest()
+    request.sortDescriptors = [
+      NSSortDescriptor(keyPath: \Task.dueDate, ascending: true),
+      NSSortDescriptor(keyPath: \Task.createdAt, ascending: false),
+    ]
 
-  // 删除任务
-  func deleteTask(at indexSet: IndexSet) {
-    tasks.remove(atOffsets: indexSet)
-  }
-
-  // 删除指定任务
-  func deleteTask(task: TodoTask) {
-    if let index = tasks.firstIndex(where: { $0.id == task.id }) {
-      tasks.remove(at: index)
+    do {
+      tasks = try viewContext.fetch(request)
+    } catch {
+      print("获取任务失败: \(error.localizedDescription)")
     }
   }
 
-  // 切换任务完成状态
-  func toggleTaskCompletion(task: TodoTask) {
-    if let index = tasks.firstIndex(where: { $0.id == task.id }) {
-      tasks[index].isCompleted.toggle()
+  // 创建新任务 - 不立即保存
+  func createTask() -> Task {
+    return Task(context: viewContext)
+  }
+
+  // 更新任务
+  func updateTask(_ task: Task) {
+    saveContext()
+  }
+
+  // 删除任务
+  func deleteTask(_ task: Task) {
+    viewContext.delete(task)
+    saveContext()
+  }
+
+  func deleteTask(at indexSet: IndexSet) {
+    for index in indexSet {
+      let task = tasks[index]
+      viewContext.delete(task)
+    }
+    saveContext()
+  }
+
+  // 标记任务完成状态
+  func toggleTaskCompletion(_ task: Task) {
+    task.isCompleted.toggle()
+    saveContext()
+  }
+
+  // 清理未保存的任务 - 用于取消操作
+  func discardChanges() {
+    print("discardChanges")
+    viewContext.rollback()
+    fetchTasks()
+  }
+
+  // 保存上下文
+  private func saveContext() {
+    do {
+      try PersistenceController.shared.save()
+      fetchTasks()
+    } catch {
+      print("保存失败: \(error)")
     }
   }
 }
