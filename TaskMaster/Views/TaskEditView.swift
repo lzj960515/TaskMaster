@@ -46,13 +46,16 @@ struct TaskEditView: View {
       Section(header: Text("优先级")) {
         Picker("优先级", selection: $priority) {
           ForEach(TaskPriority.allCases) { priority in
-            HStack {
+            Label {
               Text(priority.rawValue)
+            } icon: {
+              Image(systemName: priority.symbol)
+                .foregroundColor(Color(priority.color))
             }
             .tag(priority)
           }
         }
-        .pickerStyle(SegmentedPickerStyle())
+        .pickerStyle(NavigationLinkPickerStyle())
       }
 
       Section(header: Text("截止日期")) {
@@ -65,6 +68,8 @@ struct TaskEditView: View {
             in: Date()...,
             displayedComponents: [.date, .hourAndMinute]
           )
+          .datePickerStyle(.automatic)
+          .environment(\.locale, Locale(identifier: "zh_CN"))
         }
       }
 

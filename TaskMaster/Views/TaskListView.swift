@@ -108,14 +108,13 @@ struct TaskRowView: View {
           .strikethrough(task.isCompleted)
           .foregroundColor(task.isCompleted ? .gray : .primary)
 
-        HStack {
-          // 优先级
-          Image(systemName: task.priority.symbol)
-            .font(.footnote)
-            .foregroundColor(Color(task.priority.color))
-
-          // 截止日期
-          if let dueDate = task.dueDate {
+        if let dueDate = task.dueDate {
+          HStack(spacing: 2) {
+            // 优先级
+            Image(systemName: task.priority.symbol)
+              .font(.footnote)
+              .foregroundColor(Color(task.priority.color))
+            // 截止日期
             Text(formattedDate(dueDate))
               .font(.caption)
               .foregroundColor(isOverdue(dueDate) && !task.isCompleted ? .red : .secondary)
@@ -125,21 +124,21 @@ struct TaskRowView: View {
 
       Spacer()
 
-      if let creationDate = task.createdAt {
-        Text(creationDate, style: .date)
-          .font(.caption)
-          .foregroundColor(.gray)
-      }
     }
     .padding(.vertical, 4)
     .enableInjection()
   }
 
-  private func formattedDate(_ date: Date) -> String {
+  private let dateFormatter: DateFormatter = {
     let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "zh_CN")
     formatter.dateStyle = .medium
-    formatter.timeStyle = .none
-    return formatter.string(from: date)
+    formatter.timeStyle = .short
+    return formatter
+  }()
+
+  private func formattedDate(_ date: Date) -> String {
+    return dateFormatter.string(from: date)
   }
 
   private func isOverdue(_ date: Date) -> Bool {

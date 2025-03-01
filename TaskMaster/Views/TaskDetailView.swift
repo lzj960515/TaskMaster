@@ -3,15 +3,19 @@ import SwiftUI
 struct TaskDetailView: View {
   @ObservedObject var task: Task
   @ObservedObject var viewModel: TaskViewModel
-  @Environment(\.presentationMode) var presentationMode
   @State private var showEditView = false
 
   private let dateFormatter: DateFormatter = {
     let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "zh_CN")
     formatter.dateStyle = .medium
     formatter.timeStyle = .short
     return formatter
   }()
+
+  private func formattedDate(_ date: Date) -> String {
+    return dateFormatter.string(from: date)
+  }
 
   var body: some View {
     ScrollView {
@@ -53,7 +57,7 @@ struct TaskDetailView: View {
             Image(systemName: "calendar")
               .foregroundColor(.orange)
 
-            Text("截止日期: \(dateFormatter.string(from: dueDate))")
+            Text("截止日期: \(formattedDate(dueDate))")
               .font(.headline)
               .foregroundColor(isOverdue(dueDate) && !task.isCompleted ? .red : .primary)
           }
@@ -66,7 +70,7 @@ struct TaskDetailView: View {
             .foregroundColor(.blue)
 
           if let creationDate = task.createdAt {
-            Text("创建时间: \(dateFormatter.string(from: creationDate))")
+            Text("创建时间: \(formattedDate(creationDate))")
               .font(.subheadline)
               .foregroundColor(.secondary)
           }

@@ -60,7 +60,6 @@ class TaskViewModel: ObservableObject {
 
   // 清理未保存的任务 - 用于取消操作
   func discardChanges() {
-    print("discardChanges")
     viewContext.rollback()
     fetchTasks()
   }
