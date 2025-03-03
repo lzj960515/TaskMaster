@@ -4,10 +4,64 @@ struct TaskListView: View {
   @ObservedObject var viewModel: TaskViewModel
   @State private var isAddingTask = false
   @State private var editMode: EditMode = .inactive
+  @State private var showingFilterSheet = false
 
   var body: some View {
     NavigationView {
       VStack {
+        // 搜索栏
+        SearchBar(
+          text: $viewModel.searchText,
+          onSearch: {
+            viewModel.fetchTasks()
+          }
+        )
+        .padding(.horizontal)
+
+        // 分类和标签筛选指示器
+        if viewModel.selectedCategory != nil || !viewModel.selectedTags.isEmpty {
+          ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+              if let category = viewModel.selectedCategory {
+                FilterChip(
+                  label: category.name,
+                  color: Color(hex: category.colorHex),
+                  onRemove: {
+                    viewModel.filterByCategory(nil)
+                  }
+                )
+              }
+
+              ForEach(Array(viewModel.selectedTags), id: \.id) { tag in
+                FilterChip(
+                  label: tag.name,
+                  color: .blue,
+                  onRemove: {
+                    viewModel.toggleTagFilter(tag)
+                  }
+                )
+              }
+
+              if viewModel.selectedCategory != nil || !viewModel.selectedTags.isEmpty {
+                Button(action: {
+                  viewModel.resetFilters()
+                }) {
+                  Text("清除全部")
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.red)
+                    .cornerRadius(15)
+                }
+                .padding(.trailing, 5)
+              }
+            }
+            .padding(.leading, 10)
+          }
+          .padding(.vertical, 5)
+        }
+
         List {
           ForEach(viewModel.tasks) { task in
             HStack {
@@ -63,6 +117,14 @@ struct TaskListView: View {
             }
           }
         }
+
+        ToolbarItem(placement: .navigationBarTrailing) {
+          Button(action: {
+            showingFilterSheet = true
+          }) {
+            Image(systemName: "line.horizontal.3.decrease.circle")
+          }
+        }
       }
       .environment(\.editMode, $editMode)
       .sheet(isPresented: $isAddingTask) {
@@ -71,6 +133,9 @@ struct TaskListView: View {
             TaskEditView(task: task, viewModel: viewModel, isNew: true)
           }
         }
+      }
+      .sheet(isPresented: $showingFilterSheet) {
+        FilterView(viewModel: viewModel)
       }
       .onDisappear {
         // 确保视图消失时清理可能存在的未保存变更
@@ -86,6 +151,66 @@ struct TaskListView: View {
   #if DEBUG
     @ObserveInjection var forceRedraw
   #endif
+}
+
+// 搜索栏视图
+struct SearchBar: View {
+  @Binding var text: String
+  var onSearch: () -> Void
+
+  var body: some View {
+    HStack {
+      Image(systemName: "magnifyingglass")
+        .foregroundColor(.gray)
+
+      TextField("搜索任务", text: $text)
+        .onChange(of: text) { _ in
+          onSearch()
+        }
+
+      if !text.isEmpty {
+        Button(action: {
+          text = ""
+          onSearch()
+        }) {
+          Image(systemName: "xmark.circle.fill")
+            .foregroundColor(.gray)
+        }
+      }
+    }
+    .padding(8)
+    .background(Color(.systemGray6))
+    .cornerRadius(10)
+  }
+}
+
+// 筛选标签视图
+struct FilterChip: View {
+  let label: String
+  let color: Color
+  let onRemove: () -> Void
+
+  var body: some View {
+    HStack(spacing: 4) {
+      Circle()
+        .fill(color)
+        .frame(width: 8, height: 8)
+
+      Text(label)
+        .font(.caption)
+        .lineLimit(1)
+
+      Button(action: onRemove) {
+        Image(systemName: "xmark")
+          .font(.system(size: 10))
+      }
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 5)
+    .background(Color(.systemGray6))
+    .cornerRadius(15)
+    .padding(.trailing, 5)
+  }
 }
 
 // 任务行视图组件
@@ -108,17 +233,47 @@ struct TaskRowView: View {
           .strikethrough(task.isCompleted)
           .foregroundColor(task.isCompleted ? .gray : .primary)
 
-        if let dueDate = task.dueDate {
-          HStack(spacing: 2) {
-            // 优先级
-            Image(systemName: task.priority.symbol)
-              .font(.footnote)
-              .foregroundColor(Color(task.priority.color))
-            // 截止日期
+        HStack(spacing: 6) {
+          // 分类标签
+          if let category = task.category {
+            HStack(spacing: 2) {
+              Circle()
+                .fill(Color(hex: category.colorHex))
+                .frame(width: 8, height: 8)
+              Text(category.name)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+          }
+
+          // 优先级
+          Image(systemName: task.priority.symbol)
+            .font(.footnote)
+            .foregroundColor(Color(task.priority.color))
+
+          // 截止日期
+          if let dueDate = task.dueDate {
             Text(formattedDate(dueDate))
               .font(.caption)
               .foregroundColor(isOverdue(dueDate) && !task.isCompleted ? .red : .secondary)
           }
+        }
+
+        // 显示标签
+        if let tags = task.tags, tags.count > 0 {
+          ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+              ForEach(task.tagsArray) { tag in
+                Text(tag.name)
+                  .font(.system(size: 10))
+                  .padding(.horizontal, 6)
+                  .padding(.vertical, 2)
+                  .background(Color.blue.opacity(0.2))
+                  .cornerRadius(4)
+              }
+            }
+          }
+          .frame(height: 20)
         }
       }
 
