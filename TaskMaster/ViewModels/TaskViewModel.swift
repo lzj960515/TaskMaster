@@ -159,11 +159,10 @@ class TaskViewModel: ObservableObject {
   }
 
   // 创建新标签
-  func createTag(name: String) -> Tag {
+  func createTag(name: String) {
     let tag = Tag(context: viewContext)
     tag.name = name
     saveContext()
-    return tag
   }
 
   // 删除标签

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct FilterView: View {
-  @ObservedObject var viewModel: TaskViewModel
+  @EnvironmentObject var viewModel: TaskViewModel
   @Environment(\.presentationMode) var presentationMode
 
   var body: some View {

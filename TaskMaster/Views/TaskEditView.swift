@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct TaskEditView: View {
-  @ObservedObject var task: Task
-  @ObservedObject var viewModel: TaskViewModel
+  var task: Task
+  @EnvironmentObject var viewModel: TaskViewModel
   @Environment(\.presentationMode) var presentationMode
 
   @State private var title: String
@@ -17,9 +17,8 @@ struct TaskEditView: View {
 
   var isNew: Bool
 
-  init(task: Task, viewModel: TaskViewModel, isNew: Bool) {
+  init(task: Task, isNew: Bool) {
     self.task = task
-    self.viewModel = viewModel
     self.isNew = isNew
 
     _title = State(initialValue: task.title)
@@ -315,7 +314,8 @@ struct TaskEditView_Previews: PreviewProvider {
     let task = Task(context: context)
 
     return NavigationView {
-      TaskEditView(task: task, viewModel: viewModel, isNew: true)
+      TaskEditView(task: task, isNew: true)
+        .environmentObject(viewModel)
     }
   }
 }

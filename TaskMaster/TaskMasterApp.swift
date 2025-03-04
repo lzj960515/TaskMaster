@@ -9,16 +9,25 @@ import SwiftUI
 
 @main
 struct TaskMasterApp: App {
-    let persistenceController: PersistenceController = PersistenceController.shared
+    // 1. 先初始化 persistenceController
+    let persistenceController = PersistenceController.shared
+
+    // 2. 使用延迟初始化
+    @StateObject private var taskViewModel: TaskViewModel
+
+    // 3. 在 init 中初始化 taskViewModel
+    init() {
+        let viewModel = TaskViewModel(
+            context: persistenceController.container.viewContext
+        )
+        _taskViewModel = StateObject(wrappedValue: viewModel)
+    }
 
     var body: some Scene {
         WindowGroup {
-            TaskListView(
-                viewModel: TaskViewModel(context: persistenceController.container.viewContext)
-            )
-            .environment(\.managedObjectContext, persistenceController.container.viewContext)
-            .environmentObject(
-                TaskViewModel(context: persistenceController.container.viewContext))
+            TaskListView()
+                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .environmentObject(taskViewModel)
         }
     }
 }

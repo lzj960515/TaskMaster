@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CategoryListView: View {
   @EnvironmentObject var viewModel: TaskViewModel
+  @Environment(\.dismiss) private var dismiss
   @State private var showingAddSheet = false
   @State private var newCategoryName = ""
   @State private var newCategoryColor = "#007AFF"
@@ -138,12 +139,6 @@ struct CategoryListView: View {
   private func deleteCategories(at offsets: IndexSet) {
     for index in offsets {
       viewModel.deleteCategory(viewModel.categories[index])
-    }
-  }
-
-  private func dismiss() {
-    if let window = UIApplication.shared.windows.first {
-      window.rootViewController?.dismiss(animated: true, completion: nil)
     }
   }
 }

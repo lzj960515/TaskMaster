@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TaskListView: View {
-  @ObservedObject var viewModel: TaskViewModel
+  @EnvironmentObject var viewModel: TaskViewModel
   @State private var isAddingTask = false
   @State private var editMode: EditMode = .inactive
   @State private var showingFilterSheet = false
@@ -69,17 +69,8 @@ struct TaskListView: View {
                 .frame(maxWidth: .infinity)
                 .layoutPriority(9)
 
-              ZStack {
-                // 不可见导航链接
-                NavigationLink(destination: TaskDetailView(task: task, viewModel: viewModel)) {
-                  EmptyView()
-                }
-                .opacity(0)
-
-                // 可见图标
-                Image(systemName: "exclamationmark.circle")
-                  .foregroundColor(.blue)
-                  .font(.system(size: 14))
+              NavigationLink(destination: TaskDetailView(task: task)) {
+                EmptyView()
               }
               .frame(maxWidth: .infinity)
               .layoutPriority(1)
@@ -130,12 +121,12 @@ struct TaskListView: View {
       .sheet(isPresented: $isAddingTask) {
         if let task = viewModel.currentTask {
           NavigationView {
-            TaskEditView(task: task, viewModel: viewModel, isNew: true)
+            TaskEditView(task: task, isNew: true)
           }
         }
       }
       .sheet(isPresented: $showingFilterSheet) {
-        FilterView(viewModel: viewModel)
+        FilterView().environmentObject(viewModel)
       }
       .onDisappear {
         // 确保视图消失时清理可能存在的未保存变更
@@ -164,7 +155,7 @@ struct SearchBar: View {
         .foregroundColor(.gray)
 
       TextField("搜索任务", text: $text)
-        .onChange(of: text) { _ in
+        .onChange(of: text) { newValue, oldValue in
           onSearch()
         }
 
@@ -228,53 +219,53 @@ struct TaskRowView: View {
       }
 
       VStack(alignment: .leading, spacing: 4) {
-        Text(task.title)
-          .font(.headline)
-          .strikethrough(task.isCompleted)
-          .foregroundColor(task.isCompleted ? .gray : .primary)
-
         HStack(spacing: 6) {
-          // 分类标签
-          if let category = task.category {
-            HStack(spacing: 2) {
-              Circle()
-                .fill(Color(hex: category.colorHex))
-                .frame(width: 8, height: 8)
-              Text(category.name)
-                .font(.caption)
-                .foregroundColor(.secondary)
-            }
-          }
-
-          // 优先级
-          Image(systemName: task.priority.symbol)
-            .font(.footnote)
-            .foregroundColor(Color(task.priority.color))
-
-          // 截止日期
-          if let dueDate = task.dueDate {
-            Text(formattedDate(dueDate))
-              .font(.caption)
-              .foregroundColor(isOverdue(dueDate) && !task.isCompleted ? .red : .secondary)
-          }
+          Text(task.title)
+            .font(.headline)
+            .strikethrough(task.isCompleted)
+            .foregroundColor(task.isCompleted ? .gray : .primary)
         }
 
-        // 显示标签
-        if let tags = task.tags, tags.count > 0 {
-          ScrollView(.horizontal, showsIndicators: false) {
-            HStack {
-              ForEach(task.tagsArray) { tag in
-                Text(tag.name)
-                  .font(.system(size: 10))
-                  .padding(.horizontal, 6)
-                  .padding(.vertical, 2)
-                  .background(Color.blue.opacity(0.2))
-                  .cornerRadius(4)
+        if task.category != nil || task.dueDate != nil || task.tags?.count ?? 0 > 0 {
+          HStack(spacing: 6) {
+            // 分类标签
+            if let category = task.category {
+              HStack(spacing: 2) {
+                Circle()
+                  .fill(Color(hex: category.colorHex))
+                  .frame(width: 8, height: 8)
+                Text(category.name)
+                  .font(.caption)
+                  .foregroundColor(.secondary)
               }
             }
+
+            // 截止日期
+            if let dueDate = task.dueDate {
+              Text(formattedDate(dueDate))
+                .font(.caption)
+                .foregroundColor(isOverdue(dueDate) && !task.isCompleted ? .red : .secondary)
+            }
           }
-          .frame(height: 20)
+
+          // 显示标签
+          if let tags = task.tags, tags.count > 0 {
+            ScrollView(.horizontal, showsIndicators: false) {
+              HStack {
+                ForEach(task.tagsArray) { tag in
+                  Text(tag.name)
+                    .font(.system(size: 10))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.blue.opacity(0.2))
+                    .cornerRadius(4)
+                }
+              }
+            }
+            .frame(height: 20)
+          }
         }
+
       }
 
       Spacer()
@@ -310,6 +301,8 @@ struct TaskListView_Previews: PreviewProvider {
   static var previews: some View {
     let context = PersistenceController.shared.container.viewContext
     let viewModel = TaskViewModel(context: context)
-    return TaskListView(viewModel: viewModel)
+    TaskListView()
+      .environment(\.managedObjectContext, context)
+      .environmentObject(viewModel)
   }
 }

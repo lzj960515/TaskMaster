@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct TaskDetailView: View {
-  @ObservedObject var task: Task
-  @ObservedObject var viewModel: TaskViewModel
+  var task: Task
+  @EnvironmentObject var viewModel: TaskViewModel
   @State private var showEditView = false
 
   private let dateFormatter: DateFormatter = {
@@ -104,7 +104,7 @@ struct TaskDetailView: View {
     )
     .sheet(isPresented: $showEditView) {
       NavigationView {
-        TaskEditView(task: task, viewModel: viewModel, isNew: false)
+        TaskEditView(task: task, isNew: false)
       }
     }
   }
@@ -125,7 +125,8 @@ struct TaskDetailView_Previews: PreviewProvider {
     task.dueDate = Date().addingTimeInterval(86400)  // 明天
 
     return NavigationView {
-      TaskDetailView(task: task, viewModel: viewModel)
+      TaskDetailView(task: task)
+        .environmentObject(viewModel)
     }
   }
 }
