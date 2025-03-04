@@ -39,8 +39,7 @@ class TaskViewModel: ObservableObject {
         NSPredicate(format: "title CONTAINS[cd] %@ OR desc CONTAINS[cd] %@", searchText, searchText)
       )
     }
-    print("selectedCategory: \(selectedCategory?.name)")
-    print("showCompletedTasks: \(showCompletedTasks)")
+
     // 分类筛选
     if let category = selectedCategory {
       predicates.append(NSPredicate(format: "category == %@", category))
@@ -129,12 +128,11 @@ class TaskViewModel: ObservableObject {
   }
 
   // 创建新分类
-  func createCategory(name: String, colorHex: String = "#007AFF") -> Category {
+  func createCategory(name: String, colorHex: String = "#007AFF") {
     let category = Category(context: viewContext)
     category.name = name
     category.colorHex = colorHex
     saveContext()
-    return category
   }
 
   // 删除分类
