@@ -4,6 +4,7 @@ struct TaskDetailView: View {
   var task: Task
   @EnvironmentObject var viewModel: TaskViewModel
   @State private var showEditView = false
+  @State private var showReminderSettings = false
 
   private let dateFormatter: DateFormatter = {
     let formatter = DateFormatter()
@@ -51,7 +52,7 @@ struct TaskDetailView: View {
         }
         .padding(.vertical, 4)
 
-        // 截止日期
+        // 截止日期和提醒设置
         if let dueDate = task.dueDate {
           HStack(spacing: 8) {
             Image(systemName: "calendar")
@@ -60,6 +61,26 @@ struct TaskDetailView: View {
             Text("截止日期: \(formattedDate(dueDate))")
               .font(.headline)
               .foregroundColor(isOverdue(dueDate) && !task.isCompleted ? .red : .primary)
+
+            Spacer()
+
+            Button(action: {
+              showReminderSettings = true
+            }) {
+              Image(systemName: "bell.circle.fill")
+                .foregroundColor(.blue)
+            }
+          }
+          .padding(.vertical, 4)
+        } else {
+          Button(action: {
+            showReminderSettings = true
+          }) {
+            HStack {
+              Image(systemName: "bell.badge.plus")
+              Text("设置提醒")
+            }
+            .foregroundColor(.blue)
           }
           .padding(.vertical, 4)
         }
@@ -106,6 +127,9 @@ struct TaskDetailView: View {
       NavigationView {
         TaskEditView(task: task, isNew: false)
       }
+    }
+    .sheet(isPresented: $showReminderSettings) {
+      ReminderSettingsView(task: task)
     }
   }
 
