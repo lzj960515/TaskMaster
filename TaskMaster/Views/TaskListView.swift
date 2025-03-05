@@ -5,6 +5,8 @@ struct TaskListView: View {
   @State private var isAddingTask = false
   @State private var editMode: EditMode = .inactive
   @State private var showingFilterSheet = false
+  @State private var selectedTaskID: UUID? = nil
+  @State private var showTaskDetail = false
 
   var body: some View {
     NavigationView {
@@ -131,9 +133,27 @@ struct TaskListView: View {
       .onDisappear {
         // 确保视图消失时清理可能存在的未保存变更
         viewModel.discardChanges()
+        // 移除观察者
+        NotificationCenter.default.removeObserver(
+          self,
+          name: .didSelectTaskFromNotification,
+          object: nil
+        )
       }
       .onAppear {
         viewModel.fetchTasks()
+        // 设置通知观察者
+        NotificationCenter.default.addObserver(
+          forName: .didSelectTaskFromNotification,
+          object: nil,
+          queue: .main
+        ) { notification in
+          print("selectedTaskID: \(notification.userInfo?["taskID"])")
+          if let taskID = notification.userInfo?["taskID"] as? UUID {
+            self.selectedTaskID = taskID
+            self.showTaskDetail = true
+          }
+        }
       }
     }
     .enableInjection()

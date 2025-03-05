@@ -1,10 +1,18 @@
 import Foundation
 import UserNotifications
 
-class NotificationController {
+class NotificationController: NSObject {
   static let shared = NotificationController()
 
-  private init() {}
+  private override init() {
+    super.init()
+    setupNotificationDelegate()
+  }
+
+  // 设置通知代理
+  func setupNotificationDelegate() {
+    UNUserNotificationCenter.current().delegate = self
+  }
 
   // 请求通知权限
   func requestAuthorization() async throws -> Bool {
@@ -28,6 +36,8 @@ class NotificationController {
     content.title = "任务提醒"
     content.body = task.title
     content.sound = .default
+    // 添加任务ID到用户信息字典
+    content.userInfo = ["taskID": task.id.uuidString]
 
     // 创建日期组件
     let calendar = Calendar.current
@@ -38,6 +48,25 @@ class NotificationController {
 
     // 创建请求
     let identifier = "task-\(task.id.uuidString)"
+    let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+    // 添加通知请求
+    try await UNUserNotificationCenter.current().add(request)
+  }
+
+  // 创建重复任务提醒
+  func scheduleRepeatingTaskReminder(for task: Task, components: DateComponents) async throws {
+    let content = UNMutableNotificationContent()
+    content.title = "任务提醒"
+    content.body = task.title
+    content.sound = .default
+    content.userInfo = ["taskID": task.id.uuidString]
+
+    // 创建重复触发器
+    let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+
+    // 创建请求
+    let identifier = "task-repeating-\(task.id.uuidString)"
     let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
     // 添加通知请求
@@ -68,5 +97,40 @@ class NotificationController {
   // 取消所有通知
   func cancelAllNotifications() {
     UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+  }
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+extension NotificationController: UNUserNotificationCenterDelegate {
+  // 当用户点击通知时调用
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    // 获取通知中的任务ID
+    let userInfo = response.notification.request.content.userInfo
+    if let taskIDString = userInfo["taskID"] as? String,
+      let taskID = UUID(uuidString: taskIDString)
+    {
+      // 发送通知到应用中，携带任务ID
+      NotificationCenter.default.post(
+        name: .didSelectTaskFromNotification, 
+        object: nil,
+        userInfo: ["taskID": taskID]
+      )
+    }
+
+    completionHandler()
+  }
+
+  // 当应用在前台时收到通知
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    // 允许在前台显示通知
+    completionHandler([.banner, .sound, .badge])
   }
 }
