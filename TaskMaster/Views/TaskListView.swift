@@ -9,7 +9,7 @@ struct TaskListView: View {
   @State private var showTaskDetail = false
 
   var body: some View {
-    NavigationView {
+    NavigationStack {
       VStack {
         // 搜索栏
         SearchBar(
@@ -99,9 +99,16 @@ struct TaskListView: View {
           .cornerRadius(10)
         }
         .padding(.bottom)
-
       }
       .navigationTitle("我的任务")
+      // 添加导航目标
+      .navigationDestination(isPresented: $showTaskDetail) {
+        if let taskID = selectedTaskID, let task = viewModel.getTask(by: taskID) {
+          TaskDetailView(task: task)
+        } else {
+          Text("任务未找到")
+        }
+      }
       .toolbar {
         ToolbarItem(placement: .navigationBarLeading) {
           Button(editMode.isEditing ? "完成" : "编辑") {
@@ -148,7 +155,6 @@ struct TaskListView: View {
           object: nil,
           queue: .main
         ) { notification in
-          print("selectedTaskID: \(notification.userInfo?["taskID"])")
           if let taskID = notification.userInfo?["taskID"] as? UUID {
             self.selectedTaskID = taskID
             self.showTaskDetail = true

@@ -185,6 +185,10 @@ class TaskViewModel: ObservableObject {
     }
   }
 
+  func getTask(by id: UUID) -> Task? {
+    return tasks.first { $0.id == id }
+  }
+
   // MARK: - 筛选与搜索
 
   // 重置所有筛选条件
