@@ -7,6 +7,7 @@ struct TaskListView: View {
   @State private var showingFilterSheet = false
   @State private var selectedTaskID: UUID? = nil
   @State private var showTaskDetail = false
+  @State private var showStatisticsView = false
 
   var body: some View {
     NavigationStack {
@@ -109,6 +110,9 @@ struct TaskListView: View {
           Text("任务未找到")
         }
       }
+      .navigationDestination(isPresented: $showStatisticsView) {
+        StatisticsView(taskViewModel: viewModel)
+      }
       .toolbar {
         ToolbarItem(placement: .navigationBarLeading) {
           Button(editMode.isEditing ? "完成" : "编辑") {
@@ -119,10 +123,17 @@ struct TaskListView: View {
         }
 
         ToolbarItem(placement: .navigationBarTrailing) {
-          Button(action: {
-            showingFilterSheet = true
-          }) {
-            Image(systemName: "line.horizontal.3.decrease.circle")
+          HStack {
+            Button(action: {
+              showStatisticsView = true
+            }) {
+              Image(systemName: "chart.bar")
+            }
+            Button(action: {
+              showingFilterSheet = true
+            }) {
+              Image(systemName: "line.horizontal.3.decrease.circle")
+            }
           }
         }
       }
